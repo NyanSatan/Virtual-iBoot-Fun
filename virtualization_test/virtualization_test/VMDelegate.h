@@ -18,6 +18,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property NSString *romPath;
 @property NSString *auxPath;    // apparently a storage for non-FS things
+@property NSString *storagePath;
 
 /*
  * Hardware model
@@ -61,6 +62,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (BOOL)configure;  // initialization and validation
 - (BOOL)start;  // actually start, this blocks
+- (void)stopByUserRequest;  // stop by user request, this doesn't block
 
 @end
 

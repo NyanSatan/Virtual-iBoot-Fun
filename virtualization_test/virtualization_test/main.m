@@ -23,10 +23,15 @@
 #define AUX_PATH    "/tmp/aux.bin"
 
 
+VMDelegate *delegate;
+
+void sig_handler(int signal);
+
 void usage(const char *program_name) {
     printf("usage: %s [OPTIONS]\n", program_name);
     printf("\t-r\tpath to custom ROM\n");
     printf("\t-a\tpath to auxiliary storage, default - %s\n", AUX_PATH);
+    printf("\t-s\tpath to storage, must already exist, defualt - disabled\n");
     printf("\t-d\tdebug port, default - disabled\n");
     printf("\t-v\tplatform version, default - 2\n");
     printf("\t-c\tcount of CPUs, default - 1\n");
@@ -34,9 +39,10 @@ void usage(const char *program_name) {
     printf("\t-b\tboard ID, default - defined by platform version\n");
     printf("\t-e\tECID, default - random\n");
     printf("\t-p\tdemote production mode\n");
+    printf("\t-f\tforce DFU\n");
 }
 
-const char *args = "r:a:d:v:c:m:b:e:p";
+const char *args = "r:a:s:d:v:c:m:b:e:pf";
 
 int parse_numeric_arg(const char *arg, int base, uint64_t *val, uint64_t max_val) {
     char *stop;
@@ -57,6 +63,7 @@ int main(int argc, const char *argv[]) {
     
     const char *rom_path = NULL;
     const char *aux_path = AUX_PATH;
+    const char *storage_path = NULL;
     bool need_debug = false;
     uint16_t debug_port = 0;
     uint8_t platform_version = PLATFORM_VERSION;
@@ -66,6 +73,7 @@ int main(int argc, const char *argv[]) {
     uint8_t boardid = 0;
     uint64_t ecid = (uint64_t)arc4random_uniform(UINT32_MAX) << 32 | arc4random_uniform(UINT32_MAX);
     bool need_demote = false;
+    bool force_dfu = false;
     
     
     char c;
@@ -77,6 +85,10 @@ int main(int argc, const char *argv[]) {
                 
             case 'a':
                 aux_path = optarg;
+                break;
+                
+            case 's':
+                storage_path = optarg;
                 break;
                 
             case 'd': {
@@ -153,6 +165,10 @@ int main(int argc, const char *argv[]) {
                 need_demote = true;
                 break;
                 
+            case 'f':
+                force_dfu = true;
+                break;
+                
             case '?':
                 printf("invalid args\n");
                 usage(argv[0]);
@@ -169,11 +185,15 @@ int main(int argc, const char *argv[]) {
          * Configuring
          */
         
-        VMDelegate *delegate = [[VMDelegate alloc] init];
+        delegate = [[VMDelegate alloc] init];
         
         /* if no ROM path set, it will just use default AVPBooter */
         if (rom_path) {
             [delegate setRomPath:[NSString stringWithUTF8String:rom_path]];
+        }
+        
+        if (storage_path) {
+            [delegate setStoragePath:[NSString stringWithUTF8String:storage_path]];
         }
         
         [delegate setAuxPath:[NSString stringWithUTF8String:aux_path]];
@@ -202,7 +222,8 @@ int main(int argc, const char *argv[]) {
         }
         
         /* not really needed to force DFU, will go there by default */
-        [delegate setForceDFU:YES];
+        /* UPD: now with storage support this might make sense */
+        [delegate setForceDFU:force_dfu];
         
         
         /* if there's something wrong, it will print about it */
@@ -211,10 +232,20 @@ int main(int argc, const char *argv[]) {
         }
         
         /*
+         * Setting up Ctrl+C handler
+         */
+        
+        signal(SIGINT, sig_handler);
+        
+        /*
          * Starting
          * Blocks until VM is shut down for whatever reason
          */
         
         return [delegate start] ? 0 : -1;
     }
+}
+
+void sig_handler(int signal) {
+    [delegate stopByUserRequest];
 }

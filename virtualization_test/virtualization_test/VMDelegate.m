@@ -109,13 +109,22 @@
     /* intializing debug UART for iBoot (PL011) and attaching it to stdout */
     /* TODO: optionally create a full-fledged character device instead */
     _VZPL011SerialPortConfiguration *serialPort = [[_VZPL011SerialPortConfiguration alloc] init];
-    serialPort.attachment = [[VZFileHandleSerialPortAttachment alloc] initWithFileHandleForReading:nil fileHandleForWriting:[NSFileHandle fileHandleWithStandardOutput]];
+    serialPort.attachment = [[VZFileHandleSerialPortAttachment alloc] initWithFileHandleForReading:[NSFileHandle fileHandleWithStandardInput] fileHandleForWriting:[NSFileHandle fileHandleWithStandardOutput]];
     [vmConfig setSerialPorts:@[serialPort]];
     
-    /* intializing storage, I used it for some tests, currently disabled */
-    //[vmConfig setStorageDevices:@[[[VZVirtioBlockDeviceConfiguration alloc] initWithAttachment:[[VZDiskImageStorageDeviceAttachment alloc] initWithURL:[NSURL fileURLWithPath:@"/tmp/str.bin"] readOnly:NO error:nil]]]];
+    /* intializing main storage, if requested. The file must already exist */
+    if (self.storagePath) {
+        VZDiskImageStorageDeviceAttachment *storageAttachment = [[VZDiskImageStorageDeviceAttachment alloc] initWithURL:[NSURL fileURLWithPath:self.storagePath] readOnly:NO error:&error];
+        if (error) {
+            ERROR_PRINT("error setting up main storage: %s", [[error debugDescription] UTF8String]);
+            return NO;
+        }
+        
+        [vmConfig setStorageDevices:@[[[VZVirtioBlockDeviceConfiguration alloc] initWithAttachment:storageAttachment]]];
+    }
     
     /* intializing start options, not really needed for reasons stated many times already */
+    /* UPD: now with storage support this might make sense */
     options = [[_VZVirtualMachineStartOptions alloc] init];
     [options setForceDFU:self.forceDFU];
     
@@ -177,6 +186,28 @@
     ERROR_PRINT("VM stopped with error: %s", [[error debugDescription] UTF8String]);
     exitStatus = NO;
     CFRunLoopStop(CFRunLoopGetCurrent());
+}
+
+/*
+ * Shutdown by user request event handling
+ */
+
+- (void)stopByUserRequest {
+    [vm stopWithCompletionHandler:^(NSError *error) {
+        
+        /* failure cause */
+        if (error) {
+            ERROR_PRINT("VM failed to stop: %s", [[error debugDescription] UTF8String]);
+            self->exitStatus = NO;
+            
+        /* non-failure cause */
+        } else {
+            SUCCESS_PRINT("\nVM stopped by user request!");
+            self->exitStatus = YES;
+        }
+        
+        CFRunLoopStop(CFRunLoopGetCurrent());
+    }];
 }
 
 @end

@@ -39,7 +39,6 @@
 /*
  * Extension for VZVirtualMachine, needed for
  * _startWithOptions:completionHandler:.
- * Well, not actually really needed
  */
 
 @interface VZVirtualMachine()
