@@ -10,6 +10,9 @@ This far I've managed to boot up to a patched kernel with **GDB server** and **d
 
 Only tested under Monterey 12.0.1
 
+***Please note that this project hasn't been updated in ages - some APIs have changed since then, so it probably won't work out-of-a-box on macOS Ventura and newer. The project might or might be not updated in the future***
+
+
 ![](repo/demo.png)
 
 
@@ -63,13 +66,13 @@ For `AVPBooter-7429.41.5` (shipped with Monterey 12.0.1) this patch' position is
 
 ### Constructing iBSS IMG4
 
-**IM4P** files (**IM**age**4****P**ayload) you can find in an **IPSW** are not enough to be loaded by **AVPBooter**. First, one has to extend them with **IM4M** (**IM**age**4****M**anifest). Quite easy with `img4lib`:
+**IM4P** files (**IM**age**4P**ayload) you can find in an **IPSW** are not enough to be loaded by **AVPBooter**. First, one has to extend them with **IM4M** (**IM**age**4M**anifest). Quite easy with `img4lib`:
 
 ```
 img4 -i iBSS.vma2.RELEASE.im4p -o iBSS.vma2.RELEASE.img4 -M tickets/vma2_ticket.der
 ```
 
-***Warning**: do not use manifests provided by an IPSW - for the reasons yet to be found it will fail to boot and AVPBooter will hang somewhere. Use one provided by TSS, such as the one provided by this repository*
+***Warning***: do not use manifests provided by an IPSW - for the reasons yet to be found it will fail to boot and AVPBooter will hang somewhere. Use one provided by TSS, such as the one provided by this repository*
 
 
 ### Booting!
